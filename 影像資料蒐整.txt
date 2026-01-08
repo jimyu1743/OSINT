@@ -1,0 +1,35 @@
+import pandas as pd
+from sentinelsat import SentinelAPI, read_geojson, geojson_to_wkt
+from datetime import date
+
+# 設定你的 Copernicus Open Access Hub 帳號
+user = 'YOUR_USERNAME'
+password = 'YOUR_PASSWORD'
+api = SentinelAPI(user, password, 'https://scihub.copernicus.eu/dhus')
+
+def fetch_sar_metadata(roi_geojson_path, start_date, end_date):
+    """
+    獲取指定區域(ROI)的SAR衛星影像元數據
+    """
+    # 讀取感興趣區域 (Region of Interest, e.g., 福建沿海某基地)
+    footprint = geojson_to_wkt(read_geojson(roi_geojson_path))
+    
+    products = api.query(
+        footprint,
+        date=(start_date, end_date),
+        platformname='Sentinel-1',
+        producttype='GRD',  # Ground Range Detected
+        sensoroperationalmode='IW' # Interferometric Wide Swath (常用於陸地觀測)
+    )
+
+    # 轉換為 DataFrame 以便進行數據清洗和特徵工程
+    df = api.to_dataframe(products)
+    
+    # 我們關注的關鍵欄位
+    columns_of_interest = ['title', 'beginposition', 'ingestiondate', 'size', 'uuid']
+    return df[columns_of_interest]
+
+# 範例執行
+# roi.geojson 應包含你關注的軍事港口座標
+# metadata = fetch_sar_metadata('fujian_port_roi.geojson', '20230101', date(2023, 12, 31))
+# print(metadata.head())
